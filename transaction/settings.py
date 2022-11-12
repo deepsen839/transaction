@@ -25,8 +25,8 @@ SECRET_KEY = 'django-insecure-vm93km#x==s+mugg7_78dv-cq(7zz6hwh&n6$$!5+obwarssq6
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
-
+ALLOWED_HOSTS = ['wallet.herokuapp.com','localhost']
+STATIC_URL = os.path.join(BASE_DIR,'staticfiles')
 
 # Application definition
 
