@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-vm93km#x==s+mugg7_78dv-cq(7zz6hwh&n6$$!5+obwarssq6'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = ['wallet.herokuapp.com','localhost']
+ALLOWED_HOSTS = ['wallet.herokuapp.com','127.0.0.1']
 
 
 # Application definition
