@@ -4,11 +4,11 @@ from django.contrib.auth.models import User
 
 # Create your models here.
 
-usertype = (('','select'),(1,'premium'),(0,"Non Premium"))
+usertype = (('','select'),('1','premium'),('2',"Non Premium"))
 
 class UserDetails(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    user_type = models.BooleanField(default=0)
+    user_type = models.IntegerField(default=2)
     wallet_amount = models.FloatField(default=0)
 
 class Transaction(models.Model):

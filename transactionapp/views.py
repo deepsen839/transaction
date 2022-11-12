@@ -14,13 +14,14 @@ def registration(request):
     user_register_form = UserForm(request.POST or None)
     if request.method == 'POST':
         if user_register_form.is_valid():
-           user_register_form.save()
-           username = user_register_form.cleaned_data.get('username')
-           user_type = user_register_form.cleaned_data.get('user_type')
-           if user_type == 0:
-            wallet_amount=1000
-           else:
-            wallet_amount=2500
+            user_register_form.save()
+            username = user_register_form.cleaned_data.get('username')
+            user_type = user_register_form.cleaned_data.get('user_type')
+
+            if user_type == '1':
+                wallet_amount=2500
+            else:
+                wallet_amount=1000
             user = User.objects.get(username=username)
             user_data = UserDetails.objects.create(user=user, wallet_amount=wallet_amount, user_type=user_type)
             user_data.save() 
@@ -47,7 +48,6 @@ def userlogout(request):
 @login_required
 def user_profile(request):
     profile_form = ProfileForm(request.user,request.POST or None)
-    print()
     transaction_record_for_user = UserProfile.objects.filter(Q(user_id=request.user.id)| Q(other_id=request.user.id)).all()
     print(transaction_record_for_user.count())
     if request.method =='POST':
@@ -72,8 +72,10 @@ def savetransaction(request):
         if accepted == '0':
             return HttpResponse(json.dumps({'response':200,'success':True}),content_type="application/json")
         elif accepted == '1':
-            payee = UserDetails.objects.filter(user=userprofile.user).first()
-            receiver = UserDetails.objects.filter(user=userprofile.other).first()
+            receiver = UserDetails.objects.filter(user=userprofile.user).first()
+            payee = UserDetails.objects.filter(user=userprofile.other).first()
+            superuser = User.objects.filter(is_superuser=1).first()
+            superuserdetails = UserDetails.objects.filter(user=superuser).first()
             from_user_charge_percentage = receiver_user_charge_percentage = 0
             if payee.user_type == 1:
                 from_user_charge_percentage = 3
@@ -87,7 +89,6 @@ def savetransaction(request):
 
             from_user_charge = (userprofile.amount_requested*from_user_charge_percentage)/100
             to_user_charge = (userprofile.amount_requested*receiver_user_charge_percentage)/100
-            print(userprofile.amount_requested,payee.user_type,from_user_charge_percentage,receiver_user_charge_percentage)
             transaction_between_payee_and_receiver =Transaction(from_user = userprofile.user,
             to_user = userprofile.other,
             transaction_amount = userprofile.amount_requested,
@@ -113,4 +114,11 @@ def savetransaction(request):
                 tarnsaction_id_id=transaction_between_payee_and_receiver.id,
             )
             superuser_received_from_receiver.save()
+            payee.wallet_amount = payee.wallet_amount-(from_user_charge+userprofile.amount_requested)
+            payee.save()
+
+            receiver.wallet_amount = (receiver.wallet_amount+userprofile.amount_requested)-to_user_charge
+            receiver.save()
+            superuserdetails.wallet_amount = superuserdetails.wallet_amount+to_user_charge+from_user_charge
+            superuserdetails.save()
             return HttpResponse(json.dumps({'response':200,'success':True}),content_type="application/json")
