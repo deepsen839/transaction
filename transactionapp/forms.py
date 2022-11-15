@@ -27,4 +27,15 @@ class ProfileForm(forms.Form):
 
 class userloginForm(forms.Form):
     username = forms.CharField(max_length=200,required=True)
-    password = forms.CharField(widget=forms.PasswordInput(),required=True,error_messages={'required': 'Please enter correct password'})    
+    password = forms.CharField(widget=forms.PasswordInput(),required=True,error_messages={'required': 'Please enter correct password'})
+
+
+class ProfilesendMoneyForm(forms.Form):
+    userlist=forms.ModelChoiceField(queryset=None)
+    amount = forms.CharField(required=True)
+    def __init__(self,user,*args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.user = user
+        superuseradmin = User.objects.filter(is_superuser=1).first()
+        # super(ProfileForm, self).__init__(*args, **kwargs)
+        self.fields['userlist'].queryset = User.objects.exclude(id__in=(self.user.id,superuseradmin.id)).all()

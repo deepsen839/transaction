@@ -45,11 +45,12 @@ def userlogin(request):
 def userlogout(request):
     logout(request)
     return redirect('/')
+
 @login_required
 def user_profile(request):
     profile_form = ProfileForm(request.user,request.POST or None)
+    sendMoneyForm = ProfilesendMoneyForm(request.user) 
     transaction_record_for_user = UserProfile.objects.filter(Q(user_id=request.user.id)| Q(other_id=request.user.id)).all()
-    print(transaction_record_for_user.count())
     if request.method =='POST':
         if profile_form.is_valid():
             user = UserProfile(
@@ -59,8 +60,24 @@ def user_profile(request):
             )
             user.save()
             return redirect('/userprofile/')     
-    return render(request,'profile.html',{'transaction_record':transaction_record_for_user,'transaction_form':profile_form})
+    return render(request,'profile.html',{'transaction_record':transaction_record_for_user,'transaction_form':profile_form,'sendMoneyForm':sendMoneyForm})
 
+
+@login_required
+def send_money(request):
+    sendMoneyForm = ProfilesendMoneyForm(request.user,request.POST or None) 
+    if request.method =='POST':
+        if sendMoneyForm.is_valid():
+            sendfrom = User.objects.filter(pk=request.user.id).first()
+            sentto= User.objects.filter(pk=request.POST.get('userlist')).first()
+            user1 = UserProfile(
+            user = sendfrom,    
+            other=sentto,
+            amount_given=sendMoneyForm.cleaned_data['amount'],
+            )
+            user1.save()
+    return redirect('/userprofile/')     
+    
 
 def savetransaction(request):
     if request.method=='POST':
@@ -72,8 +89,13 @@ def savetransaction(request):
         if accepted == '0':
             return HttpResponse(json.dumps({'response':200,'success':True}),content_type="application/json")
         elif accepted == '1':
-            receiver = UserDetails.objects.filter(user=userprofile.user).first()
-            payee = UserDetails.objects.filter(user=userprofile.other).first()
+            if userprofile.amount_requested > 0:
+                receiver = UserDetails.objects.filter(user=userprofile.user).first()
+                payee = UserDetails.objects.filter(user=userprofile.other).first()
+            if userprofile.amount_given > 0:
+                 payee = UserDetails.objects.filter(user=userprofile.user).first()
+                 receiver = UserDetails.objects.filter(user=userprofile.other).first()
+     
             superuser = User.objects.filter(is_superuser=1).first()
             superuserdetails = UserDetails.objects.filter(user=superuser).first()
             from_user_charge_percentage = receiver_user_charge_percentage = 0
@@ -87,38 +109,87 @@ def savetransaction(request):
             else:
                 receiver_user_charge_percentage = 3   
 
-            from_user_charge = (userprofile.amount_requested*from_user_charge_percentage)/100
-            to_user_charge = (userprofile.amount_requested*receiver_user_charge_percentage)/100
-            transaction_between_payee_and_receiver =Transaction(from_user = userprofile.user,
-            to_user = userprofile.other,
-            transaction_amount = userprofile.amount_requested,
-            from_user_charge = from_user_charge,
-            to_user_charge = to_user_charge,
-            from_user_percentage = from_user_charge_percentage,
-            to_user_percentage = receiver_user_charge_percentage
-            )
-            transaction_between_payee_and_receiver.save()
 
-            superuser = User.objects.filter(is_superuser=1).first()
-            superuser_received_from_payee = SuperUserReceived(
-                from_user=userprofile.user,
-                amount = from_user_charge,
-                charges = from_user_charge_percentage,
-                tarnsaction_id_id=transaction_between_payee_and_receiver.id,
-            )
-            superuser_received_from_payee.save()
-            superuser_received_from_receiver = SuperUserReceived(
-                from_user=userprofile.other,
-                amount = to_user_charge,
-                charges = receiver_user_charge_percentage,
-                tarnsaction_id_id=transaction_between_payee_and_receiver.id,
-            )
-            superuser_received_from_receiver.save()
-            payee.wallet_amount = payee.wallet_amount-(from_user_charge+userprofile.amount_requested)
-            payee.save()
+            if userprofile.amount_requested > 0:
+                print('1111111111')
+                from_user_charge = (userprofile.amount_requested*from_user_charge_percentage)/100
+                to_user_charge = (userprofile.amount_requested*receiver_user_charge_percentage)/100
+                transaction_between_payee_and_receiver =Transaction(from_user = userprofile.user,
+                to_user = userprofile.other,
+                transaction_amount = userprofile.amount_requested,
+                from_user_charge = from_user_charge,
+                to_user_charge = to_user_charge,
+                from_user_percentage = from_user_charge_percentage,
+                to_user_percentage = receiver_user_charge_percentage
+                )
+                transaction_between_payee_and_receiver.save()
 
-            receiver.wallet_amount = (receiver.wallet_amount+userprofile.amount_requested)-to_user_charge
-            receiver.save()
-            superuserdetails.wallet_amount = superuserdetails.wallet_amount+to_user_charge+from_user_charge
-            superuserdetails.save()
+                superuser = User.objects.filter(is_superuser=1).first()
+                superuser_received_from_payee = SuperUserReceived(
+                    from_user=userprofile.user,
+                    amount = from_user_charge,
+                    charges = from_user_charge_percentage,
+                    tarnsaction_id_id=transaction_between_payee_and_receiver.id,
+                )
+                superuser_received_from_payee.save()
+                superuser_received_from_receiver = SuperUserReceived(
+                    from_user=userprofile.other,
+                    amount = to_user_charge,
+                    charges = receiver_user_charge_percentage,
+                    tarnsaction_id_id=transaction_between_payee_and_receiver.id,
+                )
+                superuser_received_from_receiver.save()
+                payee.wallet_amount = payee.wallet_amount-(from_user_charge+userprofile.amount_requested)
+                payee.save()
+
+                receiver.wallet_amount = (receiver.wallet_amount+userprofile.amount_requested)-to_user_charge
+                receiver.save()
+                superuserdetails.wallet_amount = superuserdetails.wallet_amount+to_user_charge+from_user_charge
+                superuserdetails.save()
+
+            # =========================
+
+            if userprofile.amount_given > 0:
+                print('22222222222')
+                from_user_charge = (userprofile.amount_given*from_user_charge_percentage)/100
+                to_user_charge = (userprofile.amount_given*receiver_user_charge_percentage)/100
+                transaction_between_payee_and_receiver =Transaction(from_user = userprofile.user,
+                to_user = userprofile.other,
+                transaction_amount = userprofile.amount_given,
+                from_user_charge = from_user_charge,
+                to_user_charge = to_user_charge,
+                from_user_percentage = from_user_charge_percentage,
+                to_user_percentage = receiver_user_charge_percentage
+                )
+                transaction_between_payee_and_receiver.save()
+
+                superuser = User.objects.filter(is_superuser=1).first()
+                superuser_received_from_payee = SuperUserReceived(
+                    from_user=userprofile.user,
+                    amount = from_user_charge,
+                    charges = from_user_charge_percentage,
+                    tarnsaction_id_id=transaction_between_payee_and_receiver.id,
+                )
+                superuser_received_from_payee.save()
+                superuser_received_from_receiver = SuperUserReceived(
+                    from_user=userprofile.other,
+                    amount = to_user_charge,
+                    charges = receiver_user_charge_percentage,
+                    tarnsaction_id_id=transaction_between_payee_and_receiver.id,
+                )
+                superuser_received_from_receiver.save()
+                payee.wallet_amount = payee.wallet_amount-(from_user_charge+userprofile.amount_given)
+                payee.save()
+
+                receiver.wallet_amount = (receiver.wallet_amount+userprofile.amount_given)-to_user_charge
+                receiver.save()
+                superuserdetails.wallet_amount = superuserdetails.wallet_amount+to_user_charge+from_user_charge
+                superuserdetails.save()
+
+
+
+
+
+
+
             return HttpResponse(json.dumps({'response':200,'success':True}),content_type="application/json")

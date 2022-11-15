@@ -56,7 +56,7 @@
                 <th>>Record ID</th>
                 <th>Other User</th>
                 <th>Amount Requested</th>
-                <th>Amount Received</th>
+                <th>Amount Given</th>
                 <th>Action</th>
             </tr>
             {% if transaction_record %} 
@@ -103,7 +103,22 @@
             <div class="col-sm-4">{{field.errors}}</div>
         </div>
         {% endfor %}
-        <input type="submit" value="register"/>
+        <input type="submit" value="Request Money"/>
     </form>
+    <p>Send Money Form</p>
+
+    <form method="POST" name="sendMoneyForm" novalidate="True" action="{% url 'sendmoney' %}">
+        {% csrf_token %}
+
+        {% for field in sendMoneyForm %}
+        <div class="row">
+            <div class="col-sm-4">{{field.label}}</div>
+            <div class="col-sm-4">{{field}}</div>
+            <div class="col-sm-4">{{field.errors}}</div>
+        </div>
+        {% endfor %}
+        <input type="submit" value="Send Money"/>
+    </form>
+
     </body>
     </html>
